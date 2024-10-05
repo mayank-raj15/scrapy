@@ -1,0 +1,56 @@
+{
+  "nykaa": [
+    {
+      "type": "personal-care-appliances",
+      "id": 1390,
+      "count": 1989
+    },
+    {
+      "type": "hair-care",
+      "id": 24,
+      "count": 10438
+    },
+    {
+      "type": "bath-body",
+      "id": 1380,
+      "count": 12929
+    },
+    {
+      "type": "natural",
+      "id": 9564,
+      "count": 13632
+    },
+    {
+      "type": "mom-baby",
+      "id": 14797,
+      "count": 1844
+    },
+    {
+      "type": "wellness",
+      "id": 671,
+      "count": 12107
+    },
+    {
+      "type": "fragrance",
+      "id": 53,
+      "count": 5756
+    },
+    {
+      "type": "makeup",
+      "id": 12,
+      "count": 12763
+    },
+    {
+      "type": "skin",
+      "id": 8377,
+      "count": 14853
+    }
+  ],
+  "nykaaman": [
+    {
+      "type": "nykaa-man-grooming-store",
+      "id": 29827,
+      "count": 11845
+    }
+  ]
+}

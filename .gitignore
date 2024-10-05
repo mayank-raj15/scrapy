@@ -1,4 +1,6 @@
-*.json
-!package.json
-!package-lock.json
+*.txt
 node_modules/
+nykaa/
+dummy/
+done/
+refined/

@@ -7,23 +7,21 @@ exports.jsonify = (data) => {
 };
 
 exports.writeToFile = (name, data) => {
-  fs.writeFile(`./${name}`, data, (err) => {
-    if (err) {
-      console.error("Error writing to file:", err);
-    } else {
-      console.log("File written successfully");
-    }
-  });
+  try {
+    fs.writeFileSync(`./${name}`, data);
+    console.log("File written successfully:", name);
+  } catch (err) {
+    console.error("Error writing to file: ", name, err);
+  }
 };
 
 exports.appendToFile = (name, data) => {
-  fs.appendFile(`./${name}`, data, (err) => {
-    if (err) {
-      console.error("Error appending to file:", err);
-    } else {
-      console.log("Data appended successfully!");
-    }
-  });
+  try {
+    fs.appendFileSync(`./${name}`, data);
+    console.log("Data appended successfully!:", name);
+  } catch (err) {
+    console.error("Error appending to file:", name, err);
+  }
 };
 
 exports.readFromFile = (name) => {
@@ -119,7 +117,16 @@ exports.getFinalHtml = async (
     }
   }
 
+  const preloadedState = await page.evaluate(() => {
+    return window.__PRELOADED_STATE__;
+  });
+
+  // exports.writeToFile(
+  //   "preload.json",
+  //   exports.jsonify(preloadedState.categoryListing.listingData.products)
+  // );
+
   const htmlContent = await page.content();
   await browser.close();
-  return htmlContent;
+  return { htmlContent, preloadedState };
 };

@@ -60,23 +60,81 @@ function getDetails(
 }
 
 async function getNykaaSearchResults(
+  ctgType,
+  ctgId,
   query,
   page = 1,
-  sort = "popularity",
-  numResults = 20
+  sort = "price_desc",
+  store = "nykaa"
 ) {
   const searchQuery = getSearchQuery(query);
   let searchUrl = "";
   if (query) {
     searchUrl = `${NYKAA_URL}/search/result/?q=${searchQuery}`;
   } else {
-    searchUrl = `${NYKAA_URL}/skin/c/8377?page_no=${page}&sort=${sort}`;
+    searchUrl = `${NYKAA_URL}/${ctgType}/c/${ctgId}?page_no=${page}&sort=${sort}`;
   }
 
   console.log(searchUrl);
 
-  const htmlContent = await getFinalHtml(searchUrl, true);
-  writeToFile("nykaa", htmlContent);
+  const { htmlContent, preloadedState } = await getFinalHtml(searchUrl, true);
+  const products = preloadedState?.categoryListing?.listingData?.products ?? [];
+
+  const results = products.map(
+    ({
+      brandIds,
+      brandName,
+      dynamicTags,
+      categoryIds,
+      id,
+      imageUrl,
+      mrp,
+      name,
+      offersCount,
+      price,
+      primaryCategories,
+      productId,
+      quantity,
+      rating,
+      ratingCount,
+      slug,
+      title,
+      type,
+      variantType,
+      offer,
+      offerId,
+      packSize,
+      sku,
+    }) => ({
+      brandIds,
+      brandName,
+      dynamicTags,
+      categoryIds,
+      id,
+      imageUrl,
+      mrp,
+      name,
+      offersCount,
+      price,
+      primaryCategories,
+      productId,
+      quantity,
+      rating,
+      ratingCount,
+      slug,
+      title,
+      type,
+      variantType,
+      offer,
+      offerId,
+      packSize,
+      sku,
+    })
+  );
+
+  if (results.length > 0) return results;
+
+  writeToFile("nykaa.html", htmlContent);
 
   const $ = cheerio.load(htmlContent);
   const productLinks = [];
@@ -85,22 +143,25 @@ async function getNykaaSearchResults(
   const productRatings = [];
   const productImages = [];
 
+  const scriptSoup = $("script");
+  console.log(scriptSoup.length);
+
   const mainSoup = $(".product-listing .productWrapper");
 
   mainSoup.each((i, item) => {
-    const isAd = $(item).find("ul li").text();
-    if (isAd === "AD") return;
-    console.log(isAd);
+    // const isAd = $(item).find("ul li").text();
+    // if (isAd === "AD") return;
+    // console.log(isAd);
 
     const linkArea = $(item).find("a");
     const linkHref = linkArea.attr("href");
-    console.log(linkHref);
+    // console.log(linkHref);
 
     const imageArea = linkArea.find("img");
     const image = imageArea.attr("src");
-    console.log(image);
+    // console.log(image);
     const name = imageArea.attr("alt");
-    console.log(name);
+    // console.log(name);
 
     const priceArea = linkArea.find("div div span").slice(0, 3);
     let price = null;
@@ -117,7 +178,7 @@ async function getNykaaSearchResults(
 
     price = price ? price.replace("₹", "") : null;
     mrp = mrp ? mrp.replace("₹", "") : null;
-    console.log(price);
+    // console.log(price);
 
     if (!linkHref || !image || !price || !name) {
       console.log("Couldn't find info, skipping");
@@ -133,29 +194,22 @@ async function getNykaaSearchResults(
     // if (productLinks.length >= numResults) return false;
   });
 
-  return {
-    productLinks,
-    productNames,
-    productPrices,
-    productRatings,
-    productImages,
-  };
-}
-
-exports.nykaa = async (query = "", page = 1, sort = "popularity") => {
-  const {
-    productLinks,
-    productNames,
-    productPrices,
-    productRatings,
-    productImages,
-  } = await getNykaaSearchResults(query, page, sort);
-  const products = getDetails(
+  return getDetails(
     productLinks,
     productNames,
     productPrices,
     productRatings,
     productImages
   );
+}
+
+exports.nykaa = async (
+  query = "",
+  page = 1,
+  sort = "popularity",
+  category = {}
+) => {
+  const { type, id } = category;
+  const products = await getNykaaSearchResults(type, id, query, page, sort);
   return products;
 };
