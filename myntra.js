@@ -1,7 +1,7 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
 const url = require("url");
-const { getFinalHtml } = require("./utils");
+const { getFinalHtml, writeToFile, jsonify } = require("./utils");
 
 const MYNTRA_URL = "https://www.myntra.com";
 const SPONSORED_TEXT = "ad";
@@ -22,8 +22,8 @@ function extractFromUrl(url) {
   const urlParts = url.split("/");
 
   const productCategory = urlParts[3]; // Extract product category
-  const companyName = urlParts[4].replace("+", " "); // Convert '+' to spaces
-  const productName = urlParts[5].replace(/-/g, " "); // Replace '-' with spaces
+  const companyName = urlParts[4].replaceAll("+", " "); // Convert '+' to spaces
+  const productName = urlParts[5].replaceAll(/-/g, " "); // Replace '-' with spaces
   const productId = urlParts[6]; // Extract product ID
 
   const sizeMatch = productName.match(/(\d+(\.\d+)?\s*(g|ml|l|L))/i);
@@ -95,6 +95,12 @@ function shortenMyntraUrl(fullUrl) {
   return { uniqueId: null, shortenedUrl: null };
 }
 
+function getImportantImages(images = []) {
+  return images.filter(
+    ({ view }) => view === "default" || view === "front" || view === "back"
+  );
+}
+
 // Get details of products
 function getDetails(
   links = [],
@@ -127,7 +133,57 @@ async function getMyntraSearchResults(query, numResults = 10) {
   const searchUrl = `${MYNTRA_URL}/${query}`;
   // const searchUrl = `${MYNTRA_URL}/personal-care?sort=popularity`;
 
-  const htmlContent = await getFinalHtml(searchUrl);
+  const { htmlContent, preloadedState } = await getFinalHtml(searchUrl);
+
+  const { products = [] } = preloadedState.searchData.results;
+
+  const results = products.map(
+    ({
+      landingPageUrl,
+      productId,
+      productName,
+      rating,
+      ratingCount,
+      discount,
+      brand,
+      searchImage,
+      inventoryInfo,
+      sizes,
+      images,
+      gender,
+      primaryColour,
+      additionalInfo,
+      category,
+      mrp,
+      price,
+      articleType,
+      subCategory,
+      masterCategory,
+    }) => ({
+      landingPageUrl,
+      productId,
+      productName,
+      rating,
+      ratingCount,
+      discount,
+      brand,
+      searchImage,
+      packSize: inventoryInfo?.at(0)?.brandSizeLabel ?? null,
+      sizes,
+      images: getImportantImages(images),
+      gender,
+      primaryColour,
+      additionalInfo,
+      category,
+      mrp,
+      price,
+      articleType,
+      subCategory,
+      masterCategory,
+    })
+  );
+
+  if (results.length > 0) return results;
 
   const $ = cheerio.load(htmlContent);
 
@@ -166,32 +222,18 @@ async function getMyntraSearchResults(query, numResults = 10) {
     if (productLinks.length >= numResults) return false;
   });
 
-  return {
-    productLinks,
-    productNames,
-    productPrices,
-    productRatings,
-    productImages,
-  };
-}
-
-// Myntra
-exports.myntra = async (query = "") => {
-  const {
-    productLinks,
-    productNames,
-    productPrices,
-    productRatings,
-    productImages,
-  } = await getMyntraSearchResults(query);
-
-  const products = getDetails(
+  return getDetails(
     productLinks,
     productNames,
     productPrices,
     productRatings,
     productImages
   );
+}
+
+// Myntra
+exports.myntra = async (query = "") => {
+  const products = await getMyntraSearchResults(query);
 
   return products;
 };

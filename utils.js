@@ -38,19 +38,30 @@ exports.readFromFile = (name) => {
   }
 };
 
+exports.getDistinctIndices = (count, min, max) => {
+  const randomNumbers = new Set();
+
+  while (randomNumbers.size < count) {
+    const randomNumber = Math.floor(Math.random() * (max - min + 1)) + min;
+    randomNumbers.add(randomNumber);
+  }
+
+  return Array.from(randomNumbers);
+};
+
 // Function to slugify a given text
 function slugify(text) {
   // Convert to lowercase
   text = text.toLowerCase();
 
   // Replace special characters like '&' with words (e.g., 'and')
-  text = text.replace(/&/g, "and");
+  text = text.replaceAll(/&/g, "and");
 
   // Replace spaces with hyphens
-  text = text.replace(/\s+/g, "-");
+  text = text.replaceAll(/\s+/g, "-");
 
   // Remove any remaining non-alphanumeric characters (except hyphens)
-  text = text.replace(/[^a-z0-9\-]/g, "");
+  text = text.replaceAll(/[^a-z0-9\-]/g, "");
 
   return text;
 }
@@ -58,10 +69,10 @@ function slugify(text) {
 // Function to normalize a string by removing special characters and extra spaces
 exports.normalizeString = (inputString = "") => {
   // Remove special characters, keeping only alphanumeric and spaces
-  const cleanedString = inputString.replace(/[^a-zA-Z0-9\s]/g, "");
+  const cleanedString = inputString.replaceAll(/[^a-zA-Z0-9\s]/g, "");
 
   // Remove extra spaces
-  const normalizedString = cleanedString.trim().replace(/\s+/g, " ");
+  const normalizedString = cleanedString.trim().replaceAll(/\s+/g, " ");
 
   return normalizedString;
 };
@@ -72,12 +83,12 @@ exports.generateRandomString = (length = 10) => {
     .randomBytes(length)
     .toString("base64")
     .slice(0, length)
-    .replace(/[^a-zA-Z0-9]/g, "");
+    .replaceAll(/[^a-zA-Z0-9]/g, "");
 };
 
 // Function to get the final HTML from a URL, optionally scrolling
 exports.getFinalHtml = async (
-  url,
+  url = "",
   scrollable = false,
   timeout = 7000,
   scrollTimeout = 100,
@@ -117,9 +128,16 @@ exports.getFinalHtml = async (
     }
   }
 
-  const preloadedState = await page.evaluate(() => {
-    return window.__PRELOADED_STATE__;
-  });
+  let preloadedState;
+  if (url.includes("nykaa")) {
+    preloadedState = await page.evaluate(() => {
+      return window.__PRELOADED_STATE__;
+    });
+  } else if (url.includes("myntra")) {
+    preloadedState = await page.evaluate(() => {
+      return window.__myx;
+    });
+  }
 
   // exports.writeToFile(
   //   "preload.json",

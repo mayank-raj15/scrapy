@@ -3,7 +3,9 @@ const cheerio = require("cheerio");
 const url = require("url");
 const { getFinalHtml, writeToFile } = require("./utils");
 
-const NYKAA_URL = "https://www.nykaa.com";
+function getNykaaStoreUrl(store = "nykaa") {
+  return `https://www.${store}.com`;
+}
 
 // Utility functions
 function generateRandomString(length) {
@@ -67,12 +69,13 @@ async function getNykaaSearchResults(
   sort = "price_desc",
   store = "nykaa"
 ) {
+  const storeUrl = getNykaaStoreUrl(store);
   const searchQuery = getSearchQuery(query);
   let searchUrl = "";
   if (query) {
-    searchUrl = `${NYKAA_URL}/search/result/?q=${searchQuery}`;
+    searchUrl = `${storeUrl}/search/result/?q=${searchQuery}`;
   } else {
-    searchUrl = `${NYKAA_URL}/${ctgType}/c/${ctgId}?page_no=${page}&sort=${sort}`;
+    searchUrl = `${storeUrl}/${ctgType}/c/${ctgId}?page_no=${page}&sort=${sort}`;
   }
 
   console.log(searchUrl);
@@ -185,7 +188,7 @@ async function getNykaaSearchResults(
       return;
     }
 
-    productLinks.push(`${NYKAA_URL}${linkHref}`);
+    productLinks.push(`${storeUrl}${linkHref}`);
     productNames.push(name);
     productPrices.push({ mrp, price });
     productRatings.push(null); // Ratings are set to null since they're not being retrieved
@@ -207,9 +210,17 @@ exports.nykaa = async (
   query = "",
   page = 1,
   sort = "popularity",
-  category = {}
+  category = {},
+  store = "nykaa"
 ) => {
   const { type, id } = category;
-  const products = await getNykaaSearchResults(type, id, query, page, sort);
+  const products = await getNykaaSearchResults(
+    type,
+    id,
+    query,
+    page,
+    sort,
+    store
+  );
   return products;
 };

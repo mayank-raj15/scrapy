@@ -1,7 +1,15 @@
+const { amazon } = require("./amazon");
+const { myntra } = require("./myntra");
 const { nykaa } = require("./nykaa");
-const { appendToFile, readFromFile, writeToFile, jsonify } = require("./utils");
+const {
+  appendToFile,
+  readFromFile,
+  writeToFile,
+  jsonify,
+  getDistinctIndices,
+} = require("./utils");
 
-const STORE = "nykaa";
+const STORE = "nykaaman";
 const PER_PAGE_COUNT = 20;
 const MAX_PAGES = 500;
 
@@ -23,7 +31,7 @@ async function writeData(
   for (let i = start; i <= end; ) {
     let products;
     try {
-      products = await nykaa("", i, `price_${sortType}`, category);
+      products = await nykaa("", i, `price_${sortType}`, category, store);
     } catch (err) {
       console.log(err);
       errorCount += 1;
@@ -94,7 +102,7 @@ async function writeCategory(
   console.log(`Category written! - Store: ${store}, Category: ${type}`);
 }
 
-async function main() {
+async function main(usage = "write") {
   const startTime = new Date();
 
   const categories = readFromFile("categories.json");
@@ -105,11 +113,19 @@ async function main() {
 
     const { type, id } = category;
     console.log("Starting the category: ", type);
-    console.log(processed);
 
-    if (processed[STORE][id]?.length === 2) continue;
-
-    await writeCategory(STORE, category, processed);
+    switch (usage) {
+      case "write":
+        if (!processed[STORE][id]?.includes("done")) {
+          await writeCategory(STORE, category, processed);
+        }
+        break;
+      case "refine":
+        refineData(STORE, type);
+        break;
+      default:
+        console.log("not here son!");
+    }
 
     console.log("Processed category: ", type);
   }
@@ -120,13 +136,67 @@ async function main() {
   console.log("End time: ", endTime);
 }
 
-async function readData() {
-  const data = readFromFile("nykaa/skin.json");
+function refineData(store = STORE, ctg = "skin") {
+  const data = readFromFile(`${store}/${ctg}.json`);
   let { asc, desc } = data;
   desc = desc.flat();
+  if (!asc) {
+    asc = [];
+  }
   asc = asc.flat().reverse();
-  writeToFile("refined/nykaa_skin.json", jsonify([...desc, ...asc]));
+  writeToFile(`refined/${store}_${ctg}.json`, jsonify([...desc, ...asc]));
 }
 
-readData();
-// main();
+const CTG = "personal-care-appliances";
+
+function getProductNameFromSlug(slug = "") {
+  return slug.split("-").join(" ");
+}
+
+function mapData(store = STORE, ctg = CTG) {
+  const startTime = new Date();
+
+  const categories = readFromFile("categories.json");
+
+  for (let i = 0; i < categories[store].length; i += 1) {
+    const category = categories[store][i];
+    const { type, id } = category;
+
+    if (type !== ctg) {
+      continue;
+    }
+
+    console.log("Starting the category: ", type);
+
+    const products = readFromFile(`refined/${store}_${ctg}.json`);
+    const count = products.length;
+
+    const indices = getDistinctIndices(20, 0, count - 1);
+    console.log("Indices: ", indices);
+
+    for (let i = 0; i < indices.length; i += 1) {
+      const index = indices[i];
+      const { slug, productId, id, name, price, brandName } = products[index];
+      let productName = getProductNameFromSlug(slug);
+      if (!productName) {
+        productName = name;
+      }
+    }
+
+    console.log("Processed category: ", type);
+  }
+
+  const endTime = new Date();
+
+  console.log("Start time: ", startTime);
+  console.log("End time: ", endTime);
+}
+
+// main("write");
+
+async function test() {
+  const pds = await myntra("head and shoulders anti hairfall shampoo");
+  console.log(pds);
+}
+
+test();

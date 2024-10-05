@@ -41,21 +41,23 @@ function getDetails(
       spid: asin,
       url: shortenedUrl,
       image: images[i],
-      price: prices[i],
-      rating: ratings[i],
+      price: prices[i]?.price ?? null,
+      mrp: prices[i]?.mrp ?? null,
+      rating: ratings[i]?.rating,
+      ratingCount: ratings[i]?.ratingCount,
     };
   });
   return products;
 }
 
 // Function to get Amazon search results
-async function getAmazonSearchResults(query, numResults = 5) {
+async function getAmazonSearchResults(query = "", numResults = 5) {
   const headers = {
     "User-Agent": generateRandomString(20),
   };
 
   // Format the search query for URL
-  const searchQuery = query.replace(" ", "+");
+  const searchQuery = query.replaceAll(" ", "+");
 
   // Construct the Amazon search URL
   const url = `https://www.amazon.in/s?k=${searchQuery}`;
@@ -87,9 +89,21 @@ async function getAmazonSearchResults(query, numResults = 5) {
       const priceArea = $(item).find("span.a-price-whole");
       const price = priceArea.text().trim();
 
+      const mrpArea = $(item)
+        .find('[data-cy="price-recipe"]')
+        ?.find("a div span.a-price span.a-offscreen");
+      let mrp = mrpArea?.text()?.trim();
+      mrp = mrp ? mrp.replace("₹", "") : null;
+
       const ratingArea = $(item).find('[data-cy="reviews-ratings-slot"]');
       const ratingSpan = ratingArea.find("span");
       const rating = ratingSpan.text().trim();
+
+      const ratingCountArea = $(item).find(
+        'span[aria-label*="ratings"] a span.a-size-base'
+      );
+      let ratingCount = ratingCountArea?.text()?.replaceAll(",", "") ?? null;
+      ratingCount = parseInt(ratingCount);
 
       const linkArea = $(item).find("h2 a");
       const href = linkArea.attr("href");
@@ -107,8 +121,11 @@ async function getAmazonSearchResults(query, numResults = 5) {
         const fullLink = `https://www.amazon.in${href}`;
         productLinks.push(fullLink);
         productNames.push(name);
-        productPrices.push(price);
-        productRatings.push(rating.split(" ")[0] || null);
+        productPrices.push({ price, mrp });
+        productRatings.push({
+          rating: rating.split(" ")[0] || null,
+          ratingCount,
+        });
         productImages.push(image);
 
         if (productLinks.length >= numResults) {
@@ -138,7 +155,7 @@ exports.amazon = async (query = "") => {
     productPrices,
     productRatings,
     productImages,
-  } = await getAmazonSearchResults(query);
+  } = await getAmazonSearchResults(query, 10);
   const products = getDetails(
     productLinks,
     productNames,

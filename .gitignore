@@ -1,6 +1,7 @@
 *.txt
 node_modules/
 nykaa/
+nykaaman/
 dummy/
 done/
 refined/
