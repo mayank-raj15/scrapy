@@ -1,6 +1,11 @@
 {
   "nykaa": [
     {
+      "type": "beauty",
+      "id": 2,
+      "count": 10000
+    },
+    {
       "type": "personal-care-appliances",
       "id": 1390,
       "count": 1989

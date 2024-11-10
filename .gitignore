@@ -5,3 +5,10 @@ nykaaman/
 dummy/
 done/
 refined/
+modelData/
+mapped/
+*.csv
+products/
+results/
+batches/
+fine_tuned_model/

@@ -2,6 +2,13 @@ const { firefox } = require("playwright");
 const crypto = require("crypto");
 const fs = require("fs");
 
+const URL = {
+  nykaa: "https://www.nykaa.com",
+  nykaaman: "https://www.nykaaman.com",
+  myntra: "https://www.myntra.com",
+  amazon: "https://www.amazon.in",
+};
+
 exports.jsonify = (data) => {
   return JSON.stringify(data, null, 4);
 };
@@ -9,7 +16,7 @@ exports.jsonify = (data) => {
 exports.writeToFile = (name, data) => {
   try {
     fs.writeFileSync(`./${name}`, data);
-    console.log("File written successfully:", name);
+    // console.log("File written successfully:", name);
   } catch (err) {
     console.error("Error writing to file: ", name, err);
   }
@@ -18,7 +25,7 @@ exports.writeToFile = (name, data) => {
 exports.appendToFile = (name, data) => {
   try {
     fs.appendFileSync(`./${name}`, data);
-    console.log("Data appended successfully!:", name);
+    // console.log("Data appended successfully!:", name);
   } catch (err) {
     console.error("Error appending to file:", name, err);
   }
@@ -147,4 +154,8 @@ exports.getFinalHtml = async (
   const htmlContent = await page.content();
   await browser.close();
   return { htmlContent, preloadedState };
+};
+
+exports.getStoreUrl = (store = "nykaa", slug = "") => {
+  return `${URL[store]}/${slug}`;
 };

@@ -87,13 +87,14 @@ async function getAmazonSearchResults(query = "", numResults = 5) {
     // Loop through the product items and extract details
     mainItems.each((i, item) => {
       const priceArea = $(item).find("span.a-price-whole");
-      const price = priceArea.text().trim();
+      const price = priceArea.text().trim().replaceAll(",", "");
 
       const mrpArea = $(item)
         .find('[data-cy="price-recipe"]')
         ?.find("a div span.a-price span.a-offscreen");
       let mrp = mrpArea?.text()?.trim();
       mrp = mrp ? mrp.replace("₹", "") : null;
+      mrp = mrp ? mrp.replaceAll(",", "") : null;
 
       const ratingArea = $(item).find('[data-cy="reviews-ratings-slot"]');
       const ratingSpan = ratingArea.find("span");
@@ -148,14 +149,14 @@ async function getAmazonSearchResults(query = "", numResults = 5) {
 }
 
 // Main Amazon function to search for products
-exports.amazon = async (query = "") => {
+exports.amazon = async (query = "", numResults = 3) => {
   const {
     productLinks,
     productNames,
     productPrices,
     productRatings,
     productImages,
-  } = await getAmazonSearchResults(query, 10);
+  } = await getAmazonSearchResults(query, numResults);
   const products = getDetails(
     productLinks,
     productNames,

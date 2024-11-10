@@ -137,8 +137,6 @@ async function getNykaaSearchResults(
 
   if (results.length > 0) return results;
 
-  writeToFile("nykaa.html", htmlContent);
-
   const $ = cheerio.load(htmlContent);
   const productLinks = [];
   const productNames = [];
@@ -181,7 +179,8 @@ async function getNykaaSearchResults(
 
     price = price ? price.replace("₹", "") : null;
     mrp = mrp ? mrp.replace("₹", "") : null;
-    // console.log(price);
+    price = price ? price.replaceAll(",", "") : null;
+    mrp = mrp ? mrp.replaceAll(",", "") : null;
 
     if (!linkHref || !image || !price || !name) {
       console.log("Couldn't find info, skipping");

@@ -130,12 +130,14 @@ async function getMyntraSearchResults(query, numResults = 10) {
     "User-Agent": generateRandomString(20),
   };
 
+  query = query.replaceAll(" ", "-");
   const searchUrl = `${MYNTRA_URL}/${query}`;
+  console.log(searchUrl);
   // const searchUrl = `${MYNTRA_URL}/personal-care?sort=popularity`;
 
   const { htmlContent, preloadedState } = await getFinalHtml(searchUrl);
 
-  const { products = [] } = preloadedState.searchData.results;
+  const { products = [] } = preloadedState?.searchData?.results;
 
   const results = products.map(
     ({
@@ -163,7 +165,7 @@ async function getMyntraSearchResults(query, numResults = 10) {
       landingPageUrl,
       productId,
       productName,
-      rating,
+      rating: Math.round(rating * 10) / 10,
       ratingCount,
       discount,
       brand,
@@ -177,13 +179,15 @@ async function getMyntraSearchResults(query, numResults = 10) {
       category,
       mrp,
       price,
-      articleType,
-      subCategory,
-      masterCategory,
+      articleType: articleType.typeName,
+      subCategory: subCategory.typeName,
+      masterCategory: masterCategory.typeName,
     })
   );
 
-  if (results.length > 0) return results;
+  if (results.length > 0) {
+    return results.length > numResults ? results.slice(0, numResults) : results;
+  }
 
   const $ = cheerio.load(htmlContent);
 
@@ -207,9 +211,13 @@ async function getMyntraSearchResults(query, numResults = 10) {
     const name = imageArea.attr("title");
 
     const rating = $(item).find(".product-ratingsContainer span").text();
-    const price = $(item)
-      .find(".product-productMetaInfo .product-price .product-discountedPrice")
-      .text();
+    const price =
+      $(item)
+        ?.find(
+          ".product-productMetaInfo .product-price .product-discountedPrice"
+        )
+        ?.text()
+        ?.replaceAll(",", "") ?? null;
 
     if (!linkHref || !image || !price || !name) return;
 
@@ -232,8 +240,8 @@ async function getMyntraSearchResults(query, numResults = 10) {
 }
 
 // Myntra
-exports.myntra = async (query = "") => {
-  const products = await getMyntraSearchResults(query);
+exports.myntra = async (query = "", numResults = 3) => {
+  const products = await getMyntraSearchResults(query, numResults);
 
   return products;
 };

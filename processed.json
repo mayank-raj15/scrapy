@@ -1,5 +1,9 @@
 {
     "nykaa": {
+        "2": [
+            "popularity",
+            "done"
+        ],
         "12": [
             "desc",
             "asc",
