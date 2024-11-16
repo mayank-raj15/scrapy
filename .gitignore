@@ -12,3 +12,10 @@ products/
 results/
 batches/
 fine_tuned_model/
+!requirements.txt
+*.pkl
+*.joblib
+.conda/
+logs/
+saved_model/
+brands.json

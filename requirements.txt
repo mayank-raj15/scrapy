@@ -1,0 +1,13 @@
+pandas
+numpy
+scikit-learn
+transformers
+torch
+flask
+tensorflow
+keras
+matplotlib  # Optional, for visualizing training progress
+joblib
+xgboost
+pickle-mixin
+h5py

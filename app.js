@@ -1,3 +1,13 @@
 const { getProducts } = require("./fetchProducts");
+const {
+  generateProductInfoDataset,
+  generateBrandsData,
+  mergeRefinedData,
+  generateProductBrandDataset,
+} = require("./generateDataset");
 
-getProducts();
+// generateProductInfoDataset();
+// generateBrandsData();
+// generateProductBrandDataset();
+generateBrandsData();
+// mergeRefinedData();

@@ -53,11 +53,11 @@ async function writeCategory(
     id: 12,
     count: 12763,
   },
+  sortType = "popularity",
   processed = { [STORE]: {} }
 ) {
   const { type, id, count } = category;
   const fileName = getProductsFilePath(store, type);
-  const sortType = "popularity";
 
   if (processed[store][id]?.includes("done")) {
     return;
@@ -136,7 +136,7 @@ function refineData(store = STORE, type = "skin") {
   );
 }
 
-exports.getProducts = async (usage = "write") => {
+exports.getProducts = async (sortType = "popularity", usage = "write") => {
   const startTime = new Date();
 
   const categories = readFromFile("categories.json");
@@ -151,7 +151,7 @@ exports.getProducts = async (usage = "write") => {
     switch (usage) {
       case "write":
         if (!processed[STORE][id]?.includes("done")) {
-          await writeCategory(STORE, category, processed);
+          await writeCategory(STORE, category, sortType, processed);
         }
         break;
       case "refine":

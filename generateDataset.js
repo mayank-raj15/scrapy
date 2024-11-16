@@ -1,3 +1,6 @@
+const { STORE } = require("./constants");
+const { readFromFile, appendToFile, writeToFile, jsonify } = require("./utils");
+
 async function minify() {
   const content = fs.readFileSync("fixed_data.csv", "utf-8");
   const rows = content.split("\n");
@@ -230,3 +233,87 @@ async function createValidRankedDataSet() {
   }
   console.log(new Date());
 }
+
+exports.generateProductInfoDataset = (store = STORE, ctg = "beauty") => {
+  console.log(new Date());
+  const products = readFromFile(`products/${STORE}/refined_${ctg}.json`);
+
+  appendToFile(
+    "products_info_dataset.csv",
+    "product_name,l0_category,l1_category,l2_category,l3_category,brand_name\n"
+  );
+
+  for (let i = 0; i < products.length; i++) {
+    if (!products[i]) continue;
+    const { brandName, name, primaryCategories } = products[i];
+
+    // Extract categories safely, ensuring values exist
+    const l0Category = ctg;
+    const l1Category = primaryCategories?.l1?.name || "";
+    const l2Category = primaryCategories?.l2?.name || "";
+    const l3Category = primaryCategories?.l3?.name || "";
+
+    // Construct the CSV row
+    const csvRow = `"${name}","${l0Category}","${l1Category}","${l2Category}","${l3Category}","${brandName}"\n`;
+
+    // Append the row to the CSV file
+    appendToFile("products_info_dataset.csv", csvRow);
+  }
+
+  console.log(products.length);
+  console.log(new Date());
+};
+
+exports.generateProductBrandDataset = (store = STORE) => {
+  console.log(new Date());
+  const products = exports.mergeRefinedData(store);
+
+  appendToFile("products_brand_dataset.csv", "product_name,brand_name\n");
+
+  for (let i = 0; i < products.length; i++) {
+    if (!products[i]) continue;
+    const { brandName, name, primaryCategories } = products[i];
+
+    // Construct the CSV row
+    const csvRow = `"${name}","${brandName}"\n`;
+
+    // Append the row to the CSV file
+    appendToFile("products_brand_dataset.csv", csvRow);
+  }
+
+  console.log(products.length);
+  console.log(new Date());
+};
+
+exports.mergeRefinedData = (store = STORE) => {
+  const categoriesData = readFromFile("categories.json");
+  const categoryNames = categoriesData[store].map(({ type }) => type);
+  const refinedFileNames = categoryNames.map((ctg) => `refined_${ctg}.json`);
+
+  const products = refinedFileNames
+    .map((fileName) => readFromFile(`products/${store}/${fileName}`))
+    .flat();
+  writeToFile(`products/${store}/refined_merged.json`, jsonify(products));
+  return products;
+};
+
+exports.generateBrandsData = (store = STORE) => {
+  console.log(new Date());
+  const { brands } = readFromFile("brands.json");
+  const products = readFromFile(`products/${store}/refined_merged.json`);
+  const brandsSet = new Set();
+  Object.keys(brands).map((key) => {
+    brands[key].map(({ name }) => {
+      brandsSet.add(name);
+    });
+    products.map(({ brandName }) => {
+      brandsSet.add(brandName);
+    });
+  });
+  console.log(brandsSet.size);
+  appendToFile("brands.csv", "brand_name\n");
+  brandsSet.forEach((val) => {
+    appendToFile("brands.csv", `${val}\n`);
+  });
+  console.log(new Date());
+};
