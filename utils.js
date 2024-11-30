@@ -146,11 +146,6 @@ exports.getFinalHtml = async (
     });
   }
 
-  // exports.writeToFile(
-  //   "preload.json",
-  //   exports.jsonify(preloadedState.categoryListing.listingData.products)
-  // );
-
   const htmlContent = await page.content();
   await browser.close();
   return { htmlContent, preloadedState };
@@ -158,4 +153,18 @@ exports.getFinalHtml = async (
 
 exports.getStoreUrl = (store = "nykaa", slug = "") => {
   return `${URL[store]}/${slug}`;
+};
+
+exports.compareStrings = (a = "", b = "") => {
+  a = a.trim();
+  b = b.trim();
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) {
+      return false;
+    }
+  }
+  return true;
 };

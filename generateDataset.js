@@ -1,5 +1,7 @@
-const { STORE } = require("./constants");
+const { STORE, STORE_AMAZON } = require("./constants");
+const { PRODUCT_ATTRIBUTES } = require("./productConstants");
 const { readFromFile, appendToFile, writeToFile, jsonify } = require("./utils");
+const axios = require("axios");
 
 async function minify() {
   const content = fs.readFileSync("fixed_data.csv", "utf-8");
@@ -234,30 +236,28 @@ async function createValidRankedDataSet() {
   console.log(new Date());
 }
 
-exports.generateProductInfoDataset = (store = STORE, ctg = "beauty") => {
+exports.generateProductCategoriesDataset = (store = STORE) => {
   console.log(new Date());
-  const products = readFromFile(`products/${STORE}/refined_${ctg}.json`);
+  const products = readFromFile(`products/${STORE}/refined_merged.json`);
 
   appendToFile(
-    "products_info_dataset.csv",
-    "product_name,l0_category,l1_category,l2_category,l3_category,brand_name\n"
+    "products_categories_dataset.csv",
+    "product_name,l1_category,l2_category,l3_category\n"
   );
 
   for (let i = 0; i < products.length; i++) {
     if (!products[i]) continue;
-    const { brandName, name, primaryCategories } = products[i];
+    const { name, primaryCategories } = products[i];
 
-    // Extract categories safely, ensuring values exist
-    const l0Category = ctg;
     const l1Category = primaryCategories?.l1?.name || "";
     const l2Category = primaryCategories?.l2?.name || "";
     const l3Category = primaryCategories?.l3?.name || "";
 
     // Construct the CSV row
-    const csvRow = `"${name}","${l0Category}","${l1Category}","${l2Category}","${l3Category}","${brandName}"\n`;
+    const csvRow = `"${name}","${l1Category}","${l2Category}","${l3Category}"\n`;
 
     // Append the row to the CSV file
-    appendToFile("products_info_dataset.csv", csvRow);
+    appendToFile("products_categories_dataset.csv", csvRow);
   }
 
   console.log(products.length);
@@ -316,4 +316,80 @@ exports.generateBrandsData = (store = STORE) => {
     appendToFile("brands.csv", `${val}\n`);
   });
   console.log(new Date());
+};
+
+exports.shuffleRefinedMergedData = (store = STORE) => {
+  console.log(new Date());
+  const products = readFromFile(`products/${store}/refined_merged.json`);
+
+  shuffleArray(products);
+
+  writeToFile(`products/${store}/refined_shuffled.json`, jsonify(products));
+
+  console.log(new Date());
+};
+
+const fetchBatchData = async (type = "category", data = []) => {
+  try {
+    // Validate that data is an array
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error("Data must be a non-empty array.");
+    }
+
+    // Define the endpoint based on type
+    const url = `http://127.0.0.1:8002/batch_predict_${type}`;
+
+    // Make the POST request
+    const response = await axios.post(url, data);
+
+    // Check if response is valid and contains data
+    if (response.status === 200) {
+      return response.data; // Return the parsed response
+    } else {
+      throw new Error(`Failed to fetch data: ${response.status}`);
+    }
+  } catch (error) {
+    console.error("Error in fetchBatchData:", error.message);
+    throw error; // Rethrow the error for the caller to handle
+  }
+};
+
+exports.populateProductCateogries = async (
+  store = STORE_AMAZON,
+  batchSize = 20
+) => {
+  const products = readFromFile(`products/${store}/all.json`);
+  let batch = 0;
+  while (batch <= products.length / batchSize) {
+    let st = batch * batchSize;
+    let ed = Math.min(st + batchSize, products.length);
+
+    const productNames = [];
+
+    for (let i = st; i < ed; i++) {
+      const product = products[i];
+      productNames.push({
+        product_name: product[PRODUCT_ATTRIBUTES.name[store]],
+      });
+    }
+
+    const { categories } = await fetchBatchData("category", productNames);
+    const { brand_names } = await fetchBatchData("brand", productNames);
+
+    for (let i = st; i < ed; i++) {
+      const product = products[i];
+      appendToFile(
+        `products/${store}/categorisedData.json`,
+        `${jsonify({
+          ...product,
+          index: i,
+          predictedCategories: categories[i - st],
+          predictedBrandName: brand_names[i - st],
+        })},\n`
+      );
+    }
+
+    batch += 1;
+    console.log("Batch done: ", batch);
+  }
 };

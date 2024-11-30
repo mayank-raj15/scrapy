@@ -170,3 +170,5 @@ exports.getProducts = async (sortType = "popularity", usage = "write") => {
   console.log("Start time: ", startTime);
   console.log("End time: ", endTime);
 };
+
+function shuffleRefinedData() {}

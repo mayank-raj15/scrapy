@@ -53,7 +53,16 @@ function getDetails(
 // Function to get Amazon search results
 async function getAmazonSearchResults(query = "", numResults = 5) {
   const headers = {
-    "User-Agent": generateRandomString(20),
+    "User-Agent": generateRandomString(20 + Math.floor(20 * Math.random())),
+    accept:
+      "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+    "accept-language": "en-IN,en;q=0.9",
+    priority: "u=0, i",
+    "sec-fetch-dest": "document",
+    "sec-fetch-mode": "navigate",
+    "sec-fetch-site": "none",
+    "sec-fetch-user": "?1",
+    "upgrade-insecure-requests": "1",
   };
 
   // Format the search query for URL

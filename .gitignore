@@ -19,3 +19,7 @@ fine_tuned_model/
 logs/
 saved_model/
 brands.json
+.DS_Store
+errorReasons.js
+hierarchical_classifier.pth
+products_categories_predict_model.py
