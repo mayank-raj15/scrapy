@@ -1,5 +1,12 @@
 const { STORE_AMAZON, STORE_MYNTRA, STORE_NYKAA } = require("./constants");
 
+exports.STORE_URL = {
+  nykaa: "https://www.nykaa.com",
+  nykaaman: "https://www.nykaaman.com",
+  myntra: "https://www.myntra.com",
+  amazon: "https://www.amazon.in",
+};
+
 exports.PRODUCT_ATTRIBUTES = {
   name: {
     [STORE_AMAZON]: "name",

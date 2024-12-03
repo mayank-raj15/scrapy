@@ -6,25 +6,25 @@ import pandas as pd
 from torch import nn
 
 # Load the earlier model and tokenizer for product similarity
-similarity_model_path = './fine_tuned_model'  # Adjust this path if needed
+similarity_model_path = './product_similarity/trained_model/product_similarity_model'  # Adjust this path if needed
 similarity_model = BertForSequenceClassification.from_pretrained(similarity_model_path)
 similarity_tokenizer = BertTokenizer.from_pretrained(similarity_model_path)
 similarity_model.eval()  # Set the model to evaluation mode
 
 # Load the new model and tokenizer for brand name prediction
-brand_model_path = './saved_model'  # Adjust this path if needed
+brand_model_path = './brand_prediction/trained_model/brand_prediction_model'  # Adjust this path if needed
 brand_model = BertForSequenceClassification.from_pretrained(brand_model_path)
 brand_tokenizer = BertTokenizer.from_pretrained(brand_model_path)
 brand_model.eval()  # Set the model to evaluation mode
 
 # Load the label encoder for the brand prediction model
-brands_df = pd.read_csv('brands.csv')  # Ensure this is accessible
+brands_df = pd.read_csv('./datasets/brands.csv')  # Ensure this is accessible
 all_possible_brands = brands_df['brand_name'].unique()
 label_encoder = LabelEncoder()
 label_encoder.fit(all_possible_brands)
 
 # Load the hierarchical category prediction model
-category_model_path = './hierarchical_classifier.pth'  # Path to the trained model
+category_model_path = './categories_prediction/trained_model/categories_prediction_model.pth'  # Path to the trained model
 category_model_name = 'bert-base-uncased'
 category_tokenizer = AutoTokenizer.from_pretrained(category_model_name)
 
@@ -46,7 +46,7 @@ class HierarchicalClassifier(nn.Module):
         return l1_logits, l2_logits, l3_logits
 
 # Load the model
-categories_df = pd.read_csv("products_categories_dataset.csv")
+categories_df = pd.read_csv("./categories_prediction/dataset/products_categories_dataset.csv")
 le_l1 = LabelEncoder()
 le_l2 = LabelEncoder()
 le_l3 = LabelEncoder()

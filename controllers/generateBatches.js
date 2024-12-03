@@ -1,6 +1,13 @@
+const { shuffleArray } = require("../utils/commonUtils");
+const {
+  readFromFile,
+  appendToFile,
+  writeToFile,
+} = require("../utils/fileUtils");
+
 async function createBatches(count = 10000, batchSize = 200) {
-  const wholeData = fs.readFileSync("fixed_data.csv", "utf-8");
-  const skipIds = readFromFile("batches/done.json");
+  const wholeData = fs.readFileSync("rawData/fixed_data.csv", "utf-8");
+  const skipIds = readFromFile("rawData/batches/done.json");
   const dataRows = wholeData.split("\n");
   console.log(new Date());
 
@@ -29,7 +36,7 @@ async function createBatches(count = 10000, batchSize = 200) {
     if (items.length === 7) {
       lessItems.push(items[0], items[3], items[6]);
       const finalRow = lessItems.join(",");
-      appendToFile(`batches/batch-${batchCount}.csv`, `${finalRow}\n`);
+      appendToFile(`rawData/batches/batch-${batchCount}.csv`, `${finalRow}\n`);
       currentBatchCount += 1;
     }
     if (currentBatchCount === batchSize) {
@@ -38,7 +45,7 @@ async function createBatches(count = 10000, batchSize = 200) {
     }
   }
 
-  writeToFile("batches/done.json", jsonify(doneIds));
+  writeToFile("rawData/batches/done.json", jsonify(doneIds));
 
   console.log(new Date());
 }

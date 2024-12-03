@@ -1,6 +1,15 @@
-const { STORE, PER_PAGE_COUNT, MAX_PAGES } = require("./constants");
-const { nykaa } = require("./nykaa");
-const { readFromFile, appendToFile, writeToFile, jsonify } = require("./utils");
+const { STORE, PER_PAGE_COUNT, MAX_PAGES } = require("../utils/constants");
+const { nykaa } = require("../storeDataFetchers/nykaa");
+const {
+  readFromFile,
+  appendToFile,
+  writeToFile,
+  jsonify,
+} = require("../utils/fileUtils");
+
+const PROCESSED_FILE_PATH = "structuralData/processed.json";
+const CATEGORIES_FILE_PATH = "structuralData/categories.json";
+const DONE_FILE_PATH = "structuralData/done.txt";
 
 const getProductsFilePath = (store = STORE, type = "beauty") =>
   `products/${store}/${type}.json`;
@@ -87,29 +96,29 @@ async function writeCategory(
       //   end <= MAX_PAGES
     );
     processed[store][id] = [sortType];
-    writeToFile("processed.json", jsonify(processed));
-    appendToFile("done.txt", `${store} ${type} ${sortType}\n`);
+    writeToFile(PROCESSED_FILE_PATH, jsonify(processed));
+    appendToFile(DONE_FILE_PATH, `${store} ${type} ${sortType}\n`);
   }
 
   //   if (!processed[store][id]?.includes("desc")) {
   //     appendToFile(fileName, "{\n");
   //     await writeData(store, category, "desc", start, middle, end <= MAX_PAGES);
   //     processed[store][id] = ["desc"];
-  //     writeToFile("processed.json", jsonify(processed));
-  //     appendToFile("done.txt", `${store} ${type} desc\n`);
+  //     writeToFile(PROCESSED_FILE_PATH, jsonify(processed));
+  //     appendToFile(DONE_FILE_PATH, `${store} ${type} desc\n`);
   //   }
 
   //   if (end > MAX_PAGES) {
   //     await writeData(store, category, "asc", 1, end - middle, true);
   //     processed[store][id].push("asc");
-  //     writeToFile("processed.json", jsonify(processed));
-  //     appendToFile("done.txt", `${store} ${type} asc\n`);
+  //     writeToFile(PROCESSED_FILE_PATH, jsonify(processed));
+  //     appendToFile(DONE_FILE_PATH, `${store} ${type} asc\n`);
   //   }
 
   appendToFile(fileName, "}\n");
 
   processed[store][id].push("done");
-  writeToFile("processed.json", jsonify(processed));
+  writeToFile(PROCESSED_FILE_PATH, jsonify(processed));
 
   console.log(`Category written! - Store: ${store}, Category: ${type}`);
 }
@@ -139,11 +148,11 @@ function refineData(store = STORE, type = "skin") {
 exports.getProducts = async (sortType = "popularity", usage = "write") => {
   const startTime = new Date();
 
-  const categories = readFromFile("categories.json");
+  const categories = readFromFile(CATEGORIES_FILE_PATH);
 
   for (let i = 0; i < categories[STORE].length; i += 1) {
     const category = categories[STORE][i];
-    const processed = readFromFile("processed.json");
+    const processed = readFromFile(PROCESSED_FILE_PATH);
 
     const { type, id } = category;
     console.log("Starting the category: ", type);
@@ -170,5 +179,3 @@ exports.getProducts = async (sortType = "popularity", usage = "write") => {
   console.log("Start time: ", startTime);
   console.log("End time: ", endTime);
 };
-
-function shuffleRefinedData() {}

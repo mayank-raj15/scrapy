@@ -1,5 +1,9 @@
-const { STORE_AMAZON, STORE_MYNTRA, STORE_NYKAA } = require("./constants");
-const { getProducts } = require("./fetchProducts");
+const {
+  STORE_AMAZON,
+  STORE_MYNTRA,
+  STORE_NYKAA,
+} = require("./utils/constants");
+const { getProducts } = require("./controllers/fetchProducts");
 const {
   generateBrandsData,
   mergeRefinedData,
@@ -7,12 +11,12 @@ const {
   generateProductCategoriesDataset,
   shuffleRefinedMergedData,
   populateProductCateogries,
-} = require("./generateDataset");
+} = require("./controllers/generateDataset");
 const {
   mapProducts,
   mapProductToIds,
   normaliseMappedProducts,
-} = require("./mapProducts");
+} = require("./controllers/mapProducts");
 
 // generateProductInfoDataset();
 // generateBrandsData();

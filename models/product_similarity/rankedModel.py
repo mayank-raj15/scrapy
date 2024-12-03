@@ -1,13 +1,12 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from transformers import BertTokenizer
-from transformers import BertForSequenceClassification, Trainer, TrainingArguments
+from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 import torch
 
 # Load dataset
-data = pd.read_csv('cleanModelData.csv')  # Replace with your actual file path
+data = pd.read_csv('./dataset/cleanModelDataRanked.csv')  # Replace with your actual file path
 
 # Encode the labels: same -> 1, different -> 0
 data['label'] = data['verdict'].apply(lambda x: 1 if x.lower() == 'same' else 0)
@@ -18,9 +17,11 @@ train_data, val_data = train_test_split(data, test_size=0.2, random_state=42)
 # Initialize BERT tokenizer
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
-# Tokenize and encode the product name pairs
-def tokenize_pairs(product1, product2):
-    return tokenizer(product1, product2, truncation=True, padding='max_length', max_length=128, return_tensors='pt')
+# Tokenize and encode the product name pairs with rank
+def tokenize_pairs_with_rank(product1, product2, rank):
+    # Concatenate rank as part of the input text
+    combined_input = f"{product1} [SEP] {product2} [SEP] rank: {rank}"
+    return tokenizer(combined_input, truncation=True, padding='max_length', max_length=128, return_tensors='pt')
 
 # Prepare dataset for PyTorch
 class ProductDataset(torch.utils.data.Dataset):
@@ -34,10 +35,11 @@ class ProductDataset(torch.utils.data.Dataset):
         row = self.data.iloc[idx]
         product1 = row['name1']
         product2 = row['name2']
+        rank = row['rank']   # New rank field
         label = row['label']  # Use the integer-encoded label here
 
-        # Tokenize and convert to PyTorch tensors
-        inputs = tokenizer(product1, product2, truncation=True, padding='max_length', max_length=128, return_tensors='pt')
+        # Tokenize with rank
+        inputs = tokenize_pairs_with_rank(product1, product2, rank)
 
         # Remove the extra batch dimension added by `return_tensors='pt'`
         input_ids = inputs['input_ids'].squeeze(0)
@@ -50,14 +52,11 @@ class ProductDataset(torch.utils.data.Dataset):
             'labels': torch.tensor(label, dtype=torch.long)
         }
 
-# # Load the fine-tuned model and tokenizer from the saved directory
-# model = BertForSequenceClassification.from_pretrained('./fine_tuned_model')
-# tokenizer = BertTokenizer.from_pretrained('./fine_tuned_model')
-
 # Create PyTorch datasets
 train_dataset = ProductDataset(train_data)
 val_dataset = ProductDataset(val_data)
 
+# Define metric computation
 def compute_metrics(p):
     pred, labels = p
     pred = np.argmax(pred, axis=1)
@@ -75,7 +74,7 @@ model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_l
 
 # Define the training arguments
 training_args = TrainingArguments(
-    output_dir='./results',           # Output directory
+    output_dir='./trained_model/results',           # Output directory
     evaluation_strategy="epoch",      # Evaluate every epoch
     save_strategy="epoch",            # Save the model at each epoch (matches evaluation_strategy)
     per_device_train_batch_size=16,   # Batch size for training
@@ -100,8 +99,8 @@ trainer = Trainer(
 trainer.train()
 
 # Save the fine-tuned model
-model.save_pretrained('./fine_tuned_model')
-tokenizer.save_pretrained('./fine_tuned_model')
+model.save_pretrained('./trained_model/product_similarity_model')
+tokenizer.save_pretrained('./trained_model/product_similarity_model')
 
 # Evaluate the model
 eval_result = trainer.evaluate()

@@ -10,10 +10,10 @@ from sklearn.utils.class_weight import compute_class_weight
 import torch.nn as nn
 
 # Load the product dataset
-products_df = pd.read_csv('products_info_dataset.csv')
+products_df = pd.read_csv('./dataset/products_brand_dataset.csv')
 
 # Load the brand names from brands.csv
-brands_df = pd.read_csv('brands.csv')
+brands_df = pd.read_csv('../datasets/brands.csv')
 all_possible_brands = brands_df['brand_name'].unique()
 
 # Initialize the LabelEncoder and fit on the full list of possible brands
@@ -118,12 +118,12 @@ model.to(device)
 
 # Training Arguments with Gradient Accumulation and Learning Rate Scheduling
 training_args = TrainingArguments(
-    output_dir='./results',
+    output_dir='./trained_model/results',
     evaluation_strategy='epoch',  # Evaluate at the end of each epoch
     learning_rate=2e-5,  # Starting learning rate
     per_device_train_batch_size=32,  # Increased batch size for better gradient estimation
     per_device_eval_batch_size=64,
-    num_train_epochs=5,  # Increased epochs for better convergence
+    num_train_epochs=10,  # Increased epochs for better convergence
     weight_decay=0.01,
     load_best_model_at_end=True,
     metric_for_best_model='accuracy',
@@ -157,7 +157,7 @@ trainer.train()
 trainer.evaluate()
 
 # Save the trained model and tokenizer
-model.save_pretrained('./saved_model')
-tokenizer.save_pretrained('./saved_model')
+model.save_pretrained('./trained_model/brand_prediction_model')
+tokenizer.save_pretrained('./trained_model/brand_prediction_model')
 
 print("Model and tokenizer saved successfully!")

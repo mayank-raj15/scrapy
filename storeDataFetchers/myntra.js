@@ -1,7 +1,6 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
-const url = require("url");
-const { getFinalHtml, writeToFile, jsonify } = require("./utils");
+const { getFinalHtml } = require("../utils/webUtils");
 
 const MYNTRA_URL = "https://www.myntra.com";
 const SPONSORED_TEXT = "ad";
@@ -38,49 +37,49 @@ function extractFromUrl(url) {
   };
 }
 
-// Make a request to fetch the HTML page content
-async function fetchPageContent(url) {
-  try {
-    const response = await axios.get(url);
-    return response.data;
-  } catch (error) {
-    console.log(`Failed to retrieve page. Error: ${error}`);
-    return null;
-  }
-}
+// // Make a request to fetch the HTML page content
+// async function fetchPageContent(url) {
+//   try {
+//     const response = await axios.get(url);
+//     return response.data;
+//   } catch (error) {
+//     console.log(`Failed to retrieve page. Error: ${error}`);
+//     return null;
+//   }
+// }
 
-// Parse the page content and extract additional details like price
-function parsePageContent(htmlContent) {
-  const $ = cheerio.load(htmlContent);
+// // Parse the page content and extract additional details like price
+// function parsePageContent(htmlContent) {
+//   const $ = cheerio.load(htmlContent);
 
-  const price = $(".pdp-price").text().trim() || "Price not found";
+//   const price = $(".pdp-price").text().trim() || "Price not found";
 
-  return { price };
-}
+//   return { price };
+// }
 
-// Main function to extract product info from the URL and optionally fetch page content
-async function extractProductInfo(url) {
-  const productInfo = extractFromUrl(url);
+// // Main function to extract product info from the URL and optionally fetch page content
+// async function extractProductInfo(url) {
+//   const productInfo = extractFromUrl(url);
 
-  const htmlContent = await fetchPageContent(url);
-  if (htmlContent) {
-    const pageInfo = parsePageContent(htmlContent);
-    Object.assign(productInfo, pageInfo);
-  }
+//   const htmlContent = await fetchPageContent(url);
+//   if (htmlContent) {
+//     const pageInfo = parsePageContent(htmlContent);
+//     Object.assign(productInfo, pageInfo);
+//   }
 
-  return productInfo;
-}
+//   return productInfo;
+// }
 
-// Loop through each URL and extract product information
-function getInfoFromUrls(urls = []) {
-  urls.forEach((url) => {
-    const productInfo = extractFromUrl(url);
-    console.log("\nExtracted Product Information:");
-    for (const [key, value] of Object.entries(productInfo)) {
-      console.log(`${key}: ${value}`);
-    }
-  });
-}
+// // Loop through each URL and extract product information
+// function getInfoFromUrls(urls = []) {
+//   urls.forEach((url) => {
+//     const productInfo = extractFromUrl(url);
+//     console.log("\nExtracted Product Information:");
+//     for (const [key, value] of Object.entries(productInfo)) {
+//       console.log(`${key}: ${value}`);
+//     }
+//   });
+// }
 
 // Shorten Myntra URL
 function shortenMyntraUrl(fullUrl) {
@@ -133,7 +132,6 @@ async function getMyntraSearchResults(query, numResults = 10) {
   query = query.replaceAll(" ", "-");
   const searchUrl = `${MYNTRA_URL}/${query}`;
   console.log(searchUrl);
-  // const searchUrl = `${MYNTRA_URL}/personal-care?sort=popularity`;
 
   const { htmlContent, preloadedState } = await getFinalHtml(searchUrl);
 

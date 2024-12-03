@@ -1,10 +1,15 @@
-const { STORE, STORE_AMAZON } = require("./constants");
-const { PRODUCT_ATTRIBUTES } = require("./productConstants");
-const { readFromFile, appendToFile, writeToFile, jsonify } = require("./utils");
+const { STORE } = require("../utils/constants");
+const { PRODUCT_ATTRIBUTES } = require("../utils/storeConstants");
+const {
+  readFromFile,
+  appendToFile,
+  writeToFile,
+  jsonify,
+} = require("../utils/fileUtils");
 const axios = require("axios");
 
 async function minify() {
-  const content = fs.readFileSync("fixed_data.csv", "utf-8");
+  const content = fs.readFileSync("rawData/fixed_data.csv", "utf-8");
   const rows = content.split("\n");
   console.log(new Date());
 
@@ -16,7 +21,7 @@ async function minify() {
       lessItems.push(items[0], items[3], items[6]);
     }
     const finalRow = lessItems.join(",");
-    appendToFile("minified.csv", `${finalRow}\n`);
+    appendToFile("rawData/minified.csv", `${finalRow}\n`);
   }
 
   console.log(new Date());
@@ -26,7 +31,7 @@ async function fixPriceInData() {
   // const pds = await myntra("head and shoulders anti hairfall shampoo");
   // console.log(pds);
 
-  const content = fs.readFileSync("name_data.csv", "utf-8");
+  const content = fs.readFileSync("rawData/name_data.csv", "utf-8");
   const rows = content.split("\n");
   console.log(new Date());
 
@@ -46,7 +51,7 @@ async function fixPriceInData() {
       finalRow = rows[i];
     }
 
-    appendToFile("fixed_data.csv", `${finalRow}\n`);
+    appendToFile("rawData/fixed_data.csv", `${finalRow}\n`);
   }
   console.log(new Date());
 }
@@ -55,8 +60,8 @@ async function fixPriceInData() {
 async function createModelData() {
   console.log(new Date());
   // get data
-  const wholeData = fs.readFileSync("minified.csv", "utf-8");
-  const verdictData = fs.readFileSync("verdict.csv", "utf-8");
+  const wholeData = fs.readFileSync("rawData/minified.csv", "utf-8");
+  const verdictData = fs.readFileSync("rawData/verdict.csv", "utf-8");
   const wholeRows = wholeData.split("\n");
   const verdictRows = verdictData.split("\n");
 
@@ -80,7 +85,10 @@ async function createModelData() {
       const id = parseInt(rowItems[0]);
       const verdict = rowItems[1];
       const { name1, name2 } = idMap.get(id);
-      appendToFile("modelData.csv", `${name1},${name2},${verdict}\n`);
+      appendToFile(
+        "models/datasets/modelData.csv",
+        `${name1},${name2},${verdict}\n`
+      );
     }
   }
 
@@ -98,8 +106,8 @@ const getCompany = (url = "") => {
 async function getModelDataWithRank() {
   console.log(new Date());
   // get data
-  const wholeData = fs.readFileSync("minified_ranked.csv", "utf-8");
-  const verdictData = fs.readFileSync("verdict.csv", "utf-8");
+  const wholeData = fs.readFileSync("rawData/minified_ranked.csv", "utf-8");
+  const verdictData = fs.readFileSync("rawData/verdict.csv", "utf-8");
   const wholeRows = wholeData.split("\n");
   const verdictRows = verdictData.split("\n");
 
@@ -125,7 +133,7 @@ async function getModelDataWithRank() {
       const verdict = rowItems[1];
       const { name1, name2, rank } = idMap.get(id);
       appendToFile(
-        "modelDataRanked.csv",
+        "models/datasets/modelDataRanked.csv",
         `${name1},${name2},${rank},${verdict}\n`
       );
     }
@@ -135,7 +143,7 @@ async function getModelDataWithRank() {
 }
 
 async function minifyDataWithRank() {
-  const wholeData = fs.readFileSync("fixed_data.csv", "utf-8");
+  const wholeData = fs.readFileSync("rawData/fixed_data.csv", "utf-8");
   const dataRows = wholeData.split("\n");
   console.log(new Date());
   let prevMyntraUrl = "";
@@ -161,24 +169,15 @@ async function minifyDataWithRank() {
       lessItems.push(items[0], items[3], items[6], rank);
     }
     const finalRow = lessItems.join(",");
-    appendToFile("minified_ranked.csv", `${finalRow}\n`);
+    appendToFile("rawData/minified_ranked.csv", `${finalRow}\n`);
   }
   console.log(new Date());
 }
 
-const shuffleArray = (array) => {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const temp = array[i];
-    array[i] = array[j];
-    array[j] = temp;
-  }
-};
-
 // creates dataset with similar no of same & different match counts
 async function createValidDataSet() {
   console.log(new Date());
-  const data = fs.readFileSync("modelData.csv", "utf-8");
+  const data = fs.readFileSync("models/datasets/modelData.csv", "utf-8");
   const same = [];
   const different = [];
   const dataRows = data.split("\n");
@@ -200,7 +199,7 @@ async function createValidDataSet() {
   shuffleArray(updatedRows);
 
   for (let i = 0; i < updatedRows.length; i += 1) {
-    appendToFile("cleanModelData.csv", `${updatedRows[i]}\n`);
+    appendToFile("models/datasets/cleanModelData.csv", `${updatedRows[i]}\n`);
   }
   console.log(new Date());
 }
@@ -208,7 +207,7 @@ async function createValidDataSet() {
 // creates dataset with similar no of same & different match counts
 async function createValidRankedDataSet() {
   console.log(new Date());
-  const data = fs.readFileSync("modelDataRanked.csv", "utf-8");
+  const data = fs.readFileSync("models/datasets/modelDataRanked.csv", "utf-8");
   const same = [];
   const different = [];
   const dataRows = data.split("\n");
@@ -231,7 +230,10 @@ async function createValidRankedDataSet() {
 
   console.log(updatedRows.length);
   for (let i = 0; i < updatedRows.length; i += 1) {
-    appendToFile("cleanModelDataRanked.csv", `${updatedRows[i]}\n`);
+    appendToFile(
+      "models/datasets/cleanModelDataRanked.csv",
+      `${updatedRows[i]}\n`
+    );
   }
   console.log(new Date());
 }
@@ -241,7 +243,7 @@ exports.generateProductCategoriesDataset = (store = STORE) => {
   const products = readFromFile(`products/${STORE}/refined_merged.json`);
 
   appendToFile(
-    "products_categories_dataset.csv",
+    "models/datasets/products_categories_dataset.csv",
     "product_name,l1_category,l2_category,l3_category\n"
   );
 
@@ -257,7 +259,7 @@ exports.generateProductCategoriesDataset = (store = STORE) => {
     const csvRow = `"${name}","${l1Category}","${l2Category}","${l3Category}"\n`;
 
     // Append the row to the CSV file
-    appendToFile("products_categories_dataset.csv", csvRow);
+    appendToFile("models/datasets/products_categories_dataset.csv", csvRow);
   }
 
   console.log(products.length);
@@ -268,7 +270,10 @@ exports.generateProductBrandDataset = (store = STORE) => {
   console.log(new Date());
   const products = exports.mergeRefinedData(store);
 
-  appendToFile("products_brand_dataset.csv", "product_name,brand_name\n");
+  appendToFile(
+    "models/datasets/products_brand_dataset.csv",
+    "product_name,brand_name\n"
+  );
 
   for (let i = 0; i < products.length; i++) {
     if (!products[i]) continue;
@@ -278,7 +283,7 @@ exports.generateProductBrandDataset = (store = STORE) => {
     const csvRow = `"${name}","${brandName}"\n`;
 
     // Append the row to the CSV file
-    appendToFile("products_brand_dataset.csv", csvRow);
+    appendToFile("models/datasets/products_brand_dataset.csv", csvRow);
   }
 
   console.log(products.length);
@@ -286,7 +291,7 @@ exports.generateProductBrandDataset = (store = STORE) => {
 };
 
 exports.mergeRefinedData = (store = STORE) => {
-  const categoriesData = readFromFile("categories.json");
+  const categoriesData = readFromFile("structuralData/categories.json");
   const categoryNames = categoriesData[store].map(({ type }) => type);
   const refinedFileNames = categoryNames.map((ctg) => `refined_${ctg}.json`);
 
@@ -299,7 +304,7 @@ exports.mergeRefinedData = (store = STORE) => {
 
 exports.generateBrandsData = (store = STORE) => {
   console.log(new Date());
-  const { brands } = readFromFile("brands.json");
+  const { brands } = readFromFile("structuralData/brands.json");
   const products = readFromFile(`products/${store}/refined_merged.json`);
   const brandsSet = new Set();
   Object.keys(brands).map((key) => {
@@ -311,9 +316,9 @@ exports.generateBrandsData = (store = STORE) => {
     });
   });
   console.log(brandsSet.size);
-  appendToFile("brands.csv", "brand_name\n");
+  appendToFile("models/datasets/brands.csv", "brand_name\n");
   brandsSet.forEach((val) => {
-    appendToFile("brands.csv", `${val}\n`);
+    appendToFile("models/datasets/brands.csv", `${val}\n`);
   });
   console.log(new Date());
 };
