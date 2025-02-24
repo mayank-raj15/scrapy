@@ -1,15 +1,13 @@
-// Function to get the final HTML from a URL, optionally scrolling
+const { firefox } = require("playwright");
+
 exports.getFinalHtml = async (
   url = "",
-  scrollable = false,
-  timeout = 7000,
+  scrollable = true,
+  timeout = 8000,
   scrollTimeout = 100,
   scrollHeight = 200
 ) => {
-  const browser = await firefox.launch({
-    headless: true,
-    args: ["--disable-http2"],
-  });
+  const browser = await firefox.launch({ headless: true });
   const page = await browser.newPage();
 
   await page.setExtraHTTPHeaders({
@@ -40,15 +38,35 @@ exports.getFinalHtml = async (
     }
   }
 
-  let preloadedState;
-  if (url.includes("nykaa")) {
-    preloadedState = await page.evaluate(() => {
-      return window.__PRELOADED_STATE__;
-    });
-  } else if (url.includes("myntra")) {
-    preloadedState = await page.evaluate(() => {
-      return window.__myx;
-    });
+  let preloadedState = null;
+  try {
+    if (url.includes("nykaa")) {
+      preloadedState = await page.evaluate(() => window.__PRELOADED_STATE__);
+    } else if (url.includes("myntra")) {
+      preloadedState = await page.evaluate(() => window.__myx);
+    }
+  } catch (error) {
+    console.error("Error accessing variables:", error);
+  }
+
+  if (!preloadedState) {
+    const fullHTML = await page.content();
+    const matches =
+      fullHTML.match(/__PRELOADED_STATE__\s*=\s*(\{.*?\})(;|<)/) ||
+      fullHTML.match(/__myx\s*=\s*(\{.*?\})(;|<)/);
+
+    if (matches) {
+      let jsonString = matches[1];
+      try {
+        // Clean and parse JSON
+        jsonString = jsonString.replace(/;\s*$/, ""); // Remove trailing semicolon
+        preloadedState = JSON.parse(jsonString);
+      } catch (error) {
+        console.error("Error parsing JSON:", error, jsonString);
+      }
+    } else {
+      console.error("No matches found for preloaded state.");
+    }
   }
 
   const htmlContent = await page.content();

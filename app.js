@@ -16,7 +16,18 @@ const {
   mapProducts,
   mapProductToIds,
   normaliseMappedProducts,
+  writeMappedAndUnmappedProducts,
+  processUnmappedProducts,
 } = require("./controllers/mapProducts");
+const {
+  convertProducts,
+  printGenders,
+  batchProductsForDB,
+  addProductsToDB,
+  generateMappingMap,
+  getMappingInfo,
+  createdClusteredData,
+} = require("./controllers/convertProducts");
 
 // generateProductInfoDataset();
 // generateBrandsData();
@@ -26,12 +37,21 @@ const {
 // mapProductToIds(STORE_AMAZON);
 // mapProductToIds(STORE_MYNTRA);
 // mapProductToIds(STORE_NYKAA);
-normaliseMappedProducts();
+// normaliseMappedProducts();
+// convertProducts();
+// batchProductsForDB(100);
+// printGenders();
+// writeMappedAndUnmappedProducts(true);
+// generateMappingMap();
+// getMappingInfo();
+createdClusteredData();
 
 async function main() {
   // await mapProducts();
   // await populateProductCateogries(STORE_AMAZON);
-  // await populateProductCateogries(STORE_MYNTRA, 30);
+  // await populateProductCateogries(STORE_AMAZON, 30);
+  // await addProductsToDB();
+  // await processUnmappedProducts();
 }
 
 // main();

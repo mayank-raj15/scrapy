@@ -5,8 +5,12 @@ const {
   STORE_MYNTRA,
   STORE_AMAZON,
 } = require("../utils/constants");
-const { myntra } = require("./myntra");
-const { STORE_CODES, PRODUCT_ATTRIBUTES } = require("../utils/storeConstants");
+const { myntra } = require("../storeDataFetchers/myntra");
+const {
+  STORE_CODES,
+  PRODUCT_ATTRIBUTES,
+  STORE_FROM_CODE,
+} = require("../utils/storeConstants");
 const {
   readFromFile,
   appendToFile,
@@ -29,10 +33,219 @@ function simplifyString(input) {
     .trim() // Trim leading and trailing spaces
     .toLowerCase(); // Convert to lowercase
 
-  return simplified;
+  return simplified.split(" ").slice(0, 6).join(" ");
 }
 
-exports.mapProducts = async () => {
+const STORE_MAPPER_FUNC = {
+  [STORE_MYNTRA]: myntra,
+  [STORE_AMAZON]: amazon,
+};
+
+exports.getMappedProducts = async (
+  searchQuery,
+  productId,
+  stores = [STORE_AMAZON, STORE_MYNTRA]
+) => {
+  const promises = stores.map((store) =>
+    STORE_MAPPER_FUNC[store](searchQuery, 3)
+  );
+
+  const storeProducts = (await Promise.allSettled(promises)).map(
+    (response, index) => {
+      if (response.status === "fulfilled") {
+        const products = response.value.filter(
+          (p) => p !== null && p !== undefined
+        );
+        return products;
+      } else {
+        console.log(`${stores[index]} request failed!`);
+        appendToFile(`mapped/errors/${stores[index]}.json`, jsonify(productId));
+        console.log("Error while search for product:", searchQuery);
+        console.log("Error:", response.reason);
+        return false;
+      }
+    }
+  );
+
+  const output = {};
+
+  stores.forEach((store, index) => {
+    if (typeof storeProducts[index] === "boolean") {
+      output[store] = { isError: true };
+    } else {
+      output[store] = { isError: false, products: storeProducts[index] };
+    }
+  });
+
+  return output;
+};
+
+exports.writeMappedAndUnmappedProducts = (firstTime = false) => {
+  const ALL_STORES = [STORE_AMAZON, STORE_MYNTRA];
+  const mappedProducts = [];
+  const unmappedProducts = [];
+
+  const idMappedProducts = readFromFile(
+    `products/${STORE}/idMappedProducts.json`
+  );
+  const mappingMap = readFromFile(`mapped/${STORE}/all.json`);
+
+  for (let i = 0; i < idMappedProducts.length; i++) {
+    const product = idMappedProducts[i];
+    const productId = Object.keys(product)[0];
+    const mappedProduct = mappingMap[productId];
+
+    const doneStores = new Set();
+    if (mappedProduct) {
+      Object.keys(mappedProduct).forEach((key) => {
+        mappedProduct[key].forEach((id) => {
+          if (STORE_FROM_CODE[id.substring(0, 3)]) {
+            doneStores.add(STORE_FROM_CODE[id.substring(0, 3)]);
+          }
+        });
+      });
+    }
+
+    if (doneStores.size > 0) {
+      const mappedProductData = {
+        productId,
+        searchQuery: simplifyString(product[productId].name),
+        doneStores: Array.from(doneStores),
+      };
+      mappedProducts.push(mappedProductData);
+    }
+
+    if (!(doneStores.size === ALL_STORES.length)) {
+      const unMappedProductData = {
+        productId,
+        searchQuery: simplifyString(product[productId].name),
+        remainingStores: ALL_STORES.filter((store) => !doneStores.has(store)),
+      };
+      unmappedProducts.push(unMappedProductData);
+    }
+
+    if (doneStores.size === 2) {
+      console.log("hello there");
+    }
+  }
+
+  writeToFile(`mapped/${STORE}/mappedProducts.json`, jsonify(mappedProducts));
+  writeToFile(
+    `mapped/${STORE}/unmappedProducts.json`,
+    jsonify(unmappedProducts)
+  );
+};
+
+const writeMappedProductsToFile = (store, products, mainProduct) => {
+  const data = {
+    mainProduct,
+    type: store,
+    matchedProducts: products,
+  };
+
+  products.map((product) => {
+    appendToFile(`products/${store}/all.json`, `${jsonify(product)},\n`);
+  });
+  appendToFile(`mapped/products/${STORE}.json`, `${jsonify(data)},\n`);
+};
+
+exports.processUnmappedProducts = async () => {
+  const unmappedProducts = readFromFile(
+    `mapped/${STORE}/unmappedProducts.json`
+  );
+  const idMap = exports.populateIdData([STORE]);
+
+  const mappedList = readFromFile("mapped/products/mappedList.json") ?? [];
+  const unmappedList = readFromFile("mapped/products/unmappedList.json") ?? [];
+  const lastDoneIndex = 0;
+  let allCounts = 0;
+  let avgTime = 0;
+
+  let errorCount = 0;
+
+  console.log(unmappedList.length);
+
+  for (let i = lastDoneIndex + 1; i < unmappedList.length; i++) {
+    const { productId, searchQuery, remainingStores } = unmappedList[i];
+
+    const stTime = new Date();
+
+    if (errorCount === 10) {
+      console.log("Too many errors. Sleeping for 1 minute!");
+      await new Promise((resolve) => {
+        setTimeout(() => resolve(1), 60000);
+      });
+      errorCount = 0;
+    }
+
+    console.log("Processing product id:", productId);
+
+    const mappedProducts = await exports.getMappedProducts(
+      searchQuery,
+      productId,
+      remainingStores
+    );
+
+    const doneStores = [];
+    const erroredStores = [];
+
+    remainingStores.forEach((store) => {
+      console.log("Processing store:", store);
+      if (mappedProducts[store].isError) {
+        console.log("Store errored!");
+        erroredStores.push(store);
+        errorCount += 1;
+      } else {
+        const { products } = mappedProducts[store];
+        console.log("Products found with length:", products.length);
+        if (products.length > 0) {
+          // write to mapped files
+          doneStores.push(store);
+          writeMappedProductsToFile(store, products, idMap.get(productId));
+        }
+      }
+    });
+
+    if (erroredStores.length > 0) {
+      unmappedList.push({
+        productId,
+        searchQuery,
+        remainingStores: erroredStores,
+      });
+      appendToFile(
+        "notDone.json",
+        jsonify({ productId, searchQuery, remainingStores: erroredStores })
+      );
+    }
+    if (doneStores.length > 0) {
+      mappedList.push({
+        productId,
+        searchQuery,
+        doneStores,
+      });
+      appendToFile(
+        "done.json",
+        jsonify({ productId, searchQuery, doneStores })
+      );
+    }
+
+    const endTime = new Date();
+
+    console.log("Mapped index:", i);
+    console.log("Errors count:", errorCount);
+    allCounts += 1;
+    avgTime = (avgTime * (allCounts - 1) + (endTime - stTime)) / allCounts;
+    console.log("Average time:", Math.round(avgTime) / 1000);
+    if (i % 10 === 0) {
+      writeToFile("doneIndex.json", jsonify({ index: i }));
+      console.log("writing mapped/unmapped data");
+      writeToFile("mapped/products/mappedList.json", jsonify(mappedList));
+    }
+    writeToFile("mapped/products/unmappedList.json", jsonify(unmappedList));
+  }
+};
+
+/* exports.mapProducts = async () => {
   console.log(new Date());
 
   let errorCount = 0;
@@ -107,10 +320,6 @@ exports.mapProducts = async () => {
           "mapped/products/nykaa.json",
           `${jsonify(similarProductsMyntra)},\n`
         );
-        appendToFile(
-          "mapped/myntra-mapped.json",
-          `${jsonify(nykaaProduct.productId)}`
-        );
       }
 
       if (amazonFound && myntraFound) {
@@ -136,148 +345,27 @@ exports.mapProducts = async () => {
   }
 
   console.log(new Date());
-};
-
-// async function mapData(store = STORE, ctg = "beauty") {
-//   const startTime = new Date();
-
-//   const categories = readFromFile("structuralData/categories.json");
-//   const storeMappedIds = readFromFile(`mapped/${store}.json`) ?? [];
-//   const idMap = new Set(storeMappedIds);
-
-//   for (let i = 0; i < categories[store].length; i += 1) {
-//     const category = categories[store][i];
-//     const { type, id } = category;
-
-//     if (type !== ctg) {
-//       continue;
-//     }
-
-//     console.log("Starting the category: ", type);
-
-//     const products = readFromFile(`refined/${store}_${ctg}.json`);
-//     const count = products.length;
-
-//     const indices = getDistinctIndices(5000, 0, count - 1);
-//     console.log("Indices: ", indices);
-//     let errorCount = 0;
-
-//     for (let ind = 0; ind < indices.length; ind += 1) {
-//       const index = indices[ind];
-//       const nykaaProduct = products[index];
-//       if (idMap.has(nykaaProduct.productId)) {
-//         continue;
-//       }
-
-//       let nykaaProductSlug = getProductNameFromSlug(nykaaProduct.slug);
-//       console.log("Searching products for:", nykaaProductSlug);
-
-//       try {
-//         const [amazonProducts, myntraProducts] = await Promise.all([
-//           amazon(nykaaProductSlug, 3),
-//           myntra(nykaaProductSlug, 3),
-//         ]);
-
-//         const similarProducts = [nykaaProduct];
-
-//         for (let p = 0; p < amazonProducts.length; p++) {
-//           const amazonProduct = amazonProducts[p];
-//           if (!amazonProduct) {
-//             console.log(
-//               "Undefined product name amazon: ",
-//               amazonProduct,
-//               nykaaProductSlug
-//             );
-//             continue;
-//           }
-
-//           if (p === 0) {
-//             similarProducts.push(amazonProduct);
-//           }
-//           appendToFile(
-//             "name_data.csv",
-//             `${nykaaProduct.name.replaceAll(",", "")},${
-//               nykaaProduct.price
-//             },${getStoreUrl(
-//               "nykaa",
-//               nykaaProduct.slug
-//             )},${amazonProduct.name.replaceAll(",", "")},${
-//               amazonProduct.price
-//             },${amazonProduct.url},${p === 0 ? "same" : "different"}\n`
-//           );
-
-//           appendToFile("products/amazon.json", `${jsonify(amazonProduct)},\n`);
-//         }
-
-//         for (let p = 0; p < myntraProducts.length; p++) {
-//           const myntraProduct = myntraProducts[p];
-//           if (!myntraProduct) {
-//             console.log(
-//               "Undefined product name myntra: ",
-//               myntraProduct,
-//               nykaaProductSlug
-//             );
-//             continue;
-//           }
-
-//           if (p === 0) {
-//             similarProducts.push(myntraProduct);
-//           }
-
-//           appendToFile(
-//             "name_data.csv",
-//             `${nykaaProduct.name.replaceAll(",", "")},${
-//               nykaaProduct.price
-//             },${getStoreUrl(
-//               "nykaa",
-//               nykaaProduct.slug
-//             )},${myntraProduct.productName.replaceAll(",", "")},${
-//               myntraProduct.price
-//             },${getStoreUrl("myntra", myntraProduct.landingPageUrl)},${
-//               p === 0 ? "same" : "different"
-//             }\n`
-//           );
-
-//           appendToFile("products/myntra.json", `${jsonify(myntraProduct)},\n`);
-//         }
-
-//         appendToFile("products/all.json", `${jsonify(similarProducts)},\n`);
-//         storeMappedIds.push(nykaaProduct.productId);
-//         idMap.add(nykaaProduct.productId);
-//         writeToFile(`mapped/${store}.json`, jsonify(storeMappedIds));
-//       } catch (err) {
-//         console.log("Error while searching for product: ", nykaaProductSlug);
-//         errorCount += 1;
-//         console.log("Errors count:", errorCount);
-//       }
-//     }
-
-//     console.log("Processed category: ", type);
-//   }
-
-//   const endTime = new Date();
-
-//   console.log("Start time: ", startTime);
-//   console.log("End time: ", endTime);
-// }
+}; */
 
 exports.mapProductToIds = (store = STORE) => {
   const products = readFromFile(`products/${store}/categorisedData.json`);
+  console.log(`Store: ${store} has ${products.length} products`);
   const mappedProducts = [];
   for (let i = 0; i < products.length; i++) {
     const product = products[i];
     const productId =
-      STORE_CODES[store] + product[PRODUCT_ATTRIBUTES.id[store]];
+      STORE_CODES[store] + product[PRODUCT_ATTRIBUTES.productId[store]];
     const mappedProduct = { [productId]: product };
     mappedProducts.push(mappedProduct);
   }
+  console.log(`Mapped ${mappedProducts.length} products`);
   writeToFile(
     `products/${store}/idMappedProducts.json`,
     jsonify(mappedProducts)
   );
 };
 
-const populateIdData = (stores = []) => {
+exports.populateIdData = (stores = []) => {
   const idMap = new Map();
   stores.forEach((store) => {
     const products = readFromFile(`products/${store}/idMappedProducts.json`);
@@ -292,9 +380,15 @@ const populateIdData = (stores = []) => {
 };
 
 exports.normaliseMappedProducts = () => {
-  const mappedData = readFromFile(`mapped/products/nykaa.json`);
+  const mappedData0 = readFromFile(`mapped/products/nykaa-0.json`);
+  const mappedData1 = readFromFile(`mapped/products/nykaa-1.json`);
+  const mappedData = [...mappedData0, ...mappedData1];
 
-  const idMap = populateIdData([STORE_NYKAA, STORE_MYNTRA, STORE_AMAZON]);
+  const idMap = exports.populateIdData([
+    STORE_NYKAA,
+    STORE_MYNTRA,
+    STORE_AMAZON,
+  ]);
   const allMatchesMap = {};
 
   for (let i = 0; i < mappedData.length; i++) {
@@ -327,7 +421,8 @@ exports.normaliseMappedProducts = () => {
     };
 
     matchedProducts.forEach((product) => {
-      const id = STORE_CODES[type] + product[PRODUCT_ATTRIBUTES.id[type]];
+      const id =
+        STORE_CODES[type] + product[PRODUCT_ATTRIBUTES.productId[type]];
       const matchedProduct = idMap.get(id);
       let matchType = "none";
 
@@ -380,8 +475,21 @@ exports.normaliseMappedProducts = () => {
       );
     });
 
-    allMatchesMap[transformedMainProductId] = mappedIdsMap;
+    if (!allMatchesMap[transformedMainProductId]) {
+      allMatchesMap[transformedMainProductId] = mappedIdsMap;
+    } else {
+      Object.keys(mappedIdsMap).forEach((key) => {
+        allMatchesMap[transformedMainProductId][key].push(...mappedIdsMap[key]);
+      });
+    }
   }
+
+  Object.keys(allMatchesMap).forEach((productId) => {
+    const productMap = allMatchesMap[productId];
+    Object.keys(productMap).forEach((key) => {
+      productMap[key] = [...new Set(productMap[key])];
+    });
+  });
 
   writeToFile(`mapped/${STORE_NYKAA}/all.json`, jsonify(allMatchesMap));
 };

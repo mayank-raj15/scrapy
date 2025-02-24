@@ -73,88 +73,86 @@ async function getAmazonSearchResults(query = "", numResults = 5) {
   console.log(url);
 
   // Fetch the search results page
-  try {
-    const response = await axios.get(url, { headers });
-    if (response.status !== 200) {
-      console.log(
-        `Failed to retrieve the webpage. Status code: ${response.status}`
-      );
-      return [];
+  const response = await axios.get(url, { headers });
+  console.log(response.status);
+  if (response.status !== 200) {
+    console.log(
+      `Failed to retrieve the webpage. Status code: ${response.status}`
+    );
+    throw new Error("Failed to retrieve the webpage");
+  }
+
+  const htmlContent = response.data;
+  const $ = cheerio.load(htmlContent);
+
+  // Parsing products
+  const mainItems = $(".s-main-slot .s-result-item");
+
+  let productLinks = [];
+  let productNames = [];
+  let productPrices = [];
+  let productRatings = [];
+  let productImages = [];
+
+  // Loop through the product items and extract details
+  mainItems.each((i, item) => {
+    const priceArea = $(item).find("span.a-price-whole");
+    const price = priceArea.text().trim().replaceAll(",", "");
+
+    const mrpArea = $(item)
+      .find('[data-cy="price-recipe"]')
+      ?.find("a div span.a-price span.a-offscreen");
+    let mrp = mrpArea?.text()?.trim();
+    mrp = mrp ? mrp.replace("₹", "") : null;
+    mrp = mrp ? mrp.replaceAll(",", "") : null;
+
+    const ratingArea = $(item).find('[data-cy="reviews-ratings-slot"]');
+    const ratingSpan = ratingArea.find("span");
+    const rating = ratingSpan.text().trim();
+
+    const ratingCountArea = $(item).find('a[aria-label*="ratings"]');
+    let ratingCount =
+      ratingCountArea.attr("aria-label")?.replaceAll(",", "") ?? null;
+    ratingCount = parseInt(ratingCount);
+
+    const linkArea = $(item).find(
+      '[data-cy="title-recipe"] a.a-link-normal.s-line-clamp-3.s-link-style.a-text-normal'
+    );
+    const href = linkArea.attr("href");
+    const name = linkArea.find("span").text().trim();
+
+    const imageArea = $(item).find(".s-product-image-container img");
+    const image = imageArea.attr("src");
+
+    if (href && href.startsWith("/sspa")) {
+      // Skip sponsored products
+      return;
     }
 
-    const htmlContent = response.data;
-    const $ = cheerio.load(htmlContent);
+    if (href && price && name) {
+      const fullLink = `https://www.amazon.in${href}`;
+      productLinks.push(fullLink);
+      productNames.push(name);
+      productPrices.push({ price, mrp });
+      productRatings.push({
+        rating: rating.split(" ")[0] || null,
+        ratingCount,
+      });
+      productImages.push(image);
 
-    // Parsing products
-    const mainItems = $(".s-main-slot .s-result-item");
-    let productLinks = [];
-    let productNames = [];
-    let productPrices = [];
-    let productRatings = [];
-    let productImages = [];
-
-    // Loop through the product items and extract details
-    mainItems.each((i, item) => {
-      const priceArea = $(item).find("span.a-price-whole");
-      const price = priceArea.text().trim().replaceAll(",", "");
-
-      const mrpArea = $(item)
-        .find('[data-cy="price-recipe"]')
-        ?.find("a div span.a-price span.a-offscreen");
-      let mrp = mrpArea?.text()?.trim();
-      mrp = mrp ? mrp.replace("₹", "") : null;
-      mrp = mrp ? mrp.replaceAll(",", "") : null;
-
-      const ratingArea = $(item).find('[data-cy="reviews-ratings-slot"]');
-      const ratingSpan = ratingArea.find("span");
-      const rating = ratingSpan.text().trim();
-
-      const ratingCountArea = $(item).find(
-        'span[aria-label*="ratings"] a span.a-size-base'
-      );
-      let ratingCount = ratingCountArea?.text()?.replaceAll(",", "") ?? null;
-      ratingCount = parseInt(ratingCount);
-
-      const linkArea = $(item).find("h2 a");
-      const href = linkArea.attr("href");
-      const name = linkArea.find("span").text().trim();
-
-      const imageArea = $(item).find(".s-product-image-container img");
-      const image = imageArea.attr("src");
-
-      if (href && href.startsWith("/sspa")) {
-        // Skip sponsored products
-        return;
+      if (productLinks.length >= numResults) {
+        return false; // Exit loop when enough results are found
       }
+    }
+  });
 
-      if (href && price && name) {
-        const fullLink = `https://www.amazon.in${href}`;
-        productLinks.push(fullLink);
-        productNames.push(name);
-        productPrices.push({ price, mrp });
-        productRatings.push({
-          rating: rating.split(" ")[0] || null,
-          ratingCount,
-        });
-        productImages.push(image);
-
-        if (productLinks.length >= numResults) {
-          return false; // Exit loop when enough results are found
-        }
-      }
-    });
-
-    return {
-      productLinks,
-      productNames,
-      productPrices,
-      productRatings,
-      productImages,
-    };
-  } catch (error) {
-    console.error("Error fetching Amazon search results:", error);
-    return [];
-  }
+  return {
+    productLinks,
+    productNames,
+    productPrices,
+    productRatings,
+    productImages,
+  };
 }
 
 // Main Amazon function to search for products

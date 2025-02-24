@@ -135,7 +135,7 @@ async function getMyntraSearchResults(query, numResults = 10) {
 
   const { htmlContent, preloadedState } = await getFinalHtml(searchUrl);
 
-  const { products = [] } = preloadedState?.searchData?.results;
+  const { products = [] } = preloadedState?.searchData?.results ?? {};
 
   const results = products.map(
     ({
